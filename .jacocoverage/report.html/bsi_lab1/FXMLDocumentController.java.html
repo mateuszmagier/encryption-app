@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pl"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>FXMLDocumentController.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">JaCoCoverage analysis of project &quot;BSI_Lab1&quot; (powered by JaCoCo from EclEmma)</a> &gt; <a href="index.source.html" class="el_package">bsi_lab1</a> &gt; <span class="el_source">FXMLDocumentController.java</span></div><h1>FXMLDocumentController.java</h1><pre class="source lang-java linenums">/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+package bsi_lab1;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.net.URL;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.util.ResourceBundle;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.value.ObservableValue;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.Label;
+import javafx.scene.control.TableColumn;
+import javafx.scene.control.TableView;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.stage.FileChooser;
+import javafx.stage.Stage;
+import javafx.util.Callback;
+import javax.crypto.BadPaddingException;
+import javax.crypto.Cipher;
+import javax.crypto.IllegalBlockSizeException;
+import javax.crypto.NoSuchPaddingException;
+import javax.sql.DataSource;
+import org.apache.derby.jdbc.ClientDataSource;
+
+/**
+ *
+ * @author HP
+ */
+<span class="nc" id="L48">public class FXMLDocumentController implements Initializable {</span>
+    
+    @FXML
+    private TextArea textarea; // pole tekstu do zaszyfrowania
+    
+    private File fileToEncrypt; // dowolny plik do zaszyfrowania
+    private File fileEncryptionFile; // plik CFR przechowujący zaszyfrowany dowolny plik
+    private File fileToDecrypt; // plik CFR z zaszyfrowanym plikiem (wybierany do odszyfrowania)
+    private File decryptedFileFile; // plik przechowujący odszyfrowany plik
+    private DBHelper db; // obiekt klasy pomocniczej realizującej połączenie z bazą danych
+    private FileHelper fh;
+    //private FileHelper fh; // obiekt klasy pomoczniczej realizującej operacje plikowe
+    private ObservableList data; // obiekt klasy pomocniczej dostarczający dane do TableView
+    private File textEncryptionFile; // plik CFR przechowujący zaszyfrowany tekst
+    private File textDecryptionFile; // plik CFR przechowujący zaszyfrowany tekst (wybierany do odszyfrowania)
+    private File decryptedTextFile; // plik TXT przechowujący odszyfrowany tekst
+    private File dataToEncrypt; // plik do zaszyfrowania w bazie danych
+    private File decryptedDataFile; // plik z odszyfrowanymi danymi z bazy danych
+    private int lastId; // najwyższy identyfikator w bazie
+    
+    private Encryption enc; // obiekt klasy pomocniczej realizującej szyfrowanie
+    @FXML
+    private Label decryptedTextLabel; // odszyfrowany tekst
+    @FXML
+    private TableView&lt;?&gt; table; // tabela z zaszyfrowanymi danymi
+    @FXML
+    private Label file_to_encrypt_path; // ścieżka do pliku do zaszyfrowania
+    @FXML
+    private Label file_to_decrypt_path; // ścieżka do pliku do odszyfrowania
+    @FXML
+    private TextField data_id; // ID rekordu do odszyfrowania
+    @FXML
+    private TextArea log_textarea; // logi
+    @FXML
+    private Label data_to_encrypt_path;
+    
+    ClientDataSource ds;
+    
+    @Override
+    public void initialize(URL url, ResourceBundle rb) {
+        try {
+<span class="nc" id="L89">            enc = new Encryption(&quot;DESede&quot;);</span>
+//            System.out.println(Base64.getEncoder().encodeToString(enc.key.getEncoded()));
+<span class="nc" id="L91">            ds = new ClientDataSource();</span>
+<span class="nc" id="L92">            ds.setDatabaseName(&quot;bsi&quot;);</span>
+<span class="nc" id="L93">            ds.setUser(&quot;username&quot;);</span>
+<span class="nc" id="L94">            ds.setPassword(&quot;password&quot;);</span>
+<span class="nc" id="L95">            ds.setServerName(&quot;localhost&quot;);</span>
+<span class="nc" id="L96">            ds.setPortNumber(1527);</span>
+<span class="nc" id="L97">            db = new DBHelper(ds);</span>
+<span class="nc" id="L98">            fh = new FileHelper();</span>
+            //fh = new FileHelper();
+            try {
+<span class="nc" id="L101">                updateLog(&quot;Program rozpoczął działanie...&quot;);</span>
+<span class="nc" id="L102">                prepareTable(); // budowa struktury tabeli</span>
+<span class="nc" id="L103">                fillTable(); // wypełnienie tabeli danymi z bazy danych</span>
+<span class="nc" id="L104">                log_textarea.setEditable(false);</span>
+<span class="nc" id="L105">            } catch (SQLException ex) {</span>
+<span class="nc" id="L106">                Logger.getLogger(FXMLDocumentController.class.getName()).log(Level.SEVERE, null, ex);</span>
+<span class="nc" id="L107">            }</span>
+<span class="nc" id="L108">        } catch (NoSuchAlgorithmException ex) {</span>
+<span class="nc" id="L109">            Logger.getLogger(FXMLDocumentController.class.getName()).log(Level.SEVERE, null, ex);</span>
+<span class="nc" id="L110">        } catch (NoSuchPaddingException ex) {</span>
+<span class="nc" id="L111">            Logger.getLogger(FXMLDocumentController.class.getName()).log(Level.SEVERE, null, ex);</span>
+<span class="nc" id="L112">        } catch (SQLException ex) {</span>
+<span class="nc" id="L113">            Logger.getLogger(FXMLDocumentController.class.getName()).log(Level.SEVERE, null, ex);</span>
+<span class="nc" id="L114">        }</span>
+<span class="nc" id="L115">    }</span>
+
+    @FXML
+    private void encryptFileButtonAction(ActionEvent event) throws InvalidKeyException, IOException, FileNotFoundException, IllegalBlockSizeException, BadPaddingException {
+<span class="nc bnc" id="L119" title="All 2 branches missed.">        if(fileToEncrypt != null) {</span>
+<span class="nc bnc" id="L120" title="All 2 branches missed.">            if(fileEncryptionFile == null) {</span>
+                // wybór nazwy pliku, w którym zapisany zostanie zaszyfrowany plik
+<span class="nc" id="L122">                fileEncryptionFile = saveFileDialog(new FileChooser.ExtensionFilter(&quot;CFR&quot;, &quot;*.cfr&quot;));</span>
+            }
+            // szyfrowanie pliku
+<span class="nc" id="L125">            byte[] input = fh.readFile(fileToEncrypt);</span>
+<span class="nc" id="L126">            byte[] output = enc.crypt(Cipher.ENCRYPT_MODE, input);</span>
+<span class="nc" id="L127">            fh.saveFile(output, fileEncryptionFile);</span>
+        }
+<span class="nc" id="L129">        updateLog(&quot;Zaszyfrowano plik: &quot; + fileToEncrypt.getAbsolutePath());</span>
+<span class="nc" id="L130">        updateLog(&quot;Zaszyfrowany plik zapisano w pliku: &quot; + fileEncryptionFile.getAbsolutePath());</span>
+<span class="nc" id="L131">        fileToEncrypt = null;</span>
+<span class="nc" id="L132">        fileEncryptionFile = null;</span>
+<span class="nc" id="L133">    }</span>
+
+    @FXML
+    private void decryptFileButtonAction(ActionEvent event) throws InvalidKeyException, IOException, FileNotFoundException, IllegalBlockSizeException, BadPaddingException {
+<span class="nc bnc" id="L137" title="All 2 branches missed.">        if(decryptedFileFile == null) {</span>
+            // wybór nazwy pliku, w którym zapisany zostanie odszyfrowany plik
+<span class="nc" id="L139">            decryptedFileFile = saveFileDialog(null);</span>
+        }
+        
+<span class="nc bnc" id="L142" title="All 4 branches missed.">        if(decryptedFileFile != null &amp;&amp; fileToDecrypt != null) {</span>
+            // odszyfrowanie pliku
+<span class="nc" id="L144">            byte[] input = fh.readFile(fileToDecrypt);</span>
+<span class="nc" id="L145">            byte[] output = enc.crypt(Cipher.DECRYPT_MODE, input);</span>
+<span class="nc" id="L146">            fh.saveFile(output, decryptedFileFile);</span>
+        }
+        
+<span class="nc" id="L149">        updateLog(&quot;Odszyfrowano plik: &quot; + fileToDecrypt.getAbsolutePath());</span>
+<span class="nc" id="L150">        updateLog(&quot;Odszyfrowany plik zapisano w pliku: &quot; + decryptedFileFile.getAbsolutePath());</span>
+<span class="nc" id="L151">    }</span>
+
+    @FXML
+    private void encryptTextButtonAction(ActionEvent event) throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException {
+<span class="nc" id="L155">        String text = textarea.getText(); // pobranie tekstu z pola</span>
+<span class="nc bnc" id="L156" title="All 2 branches missed.">        if(textEncryptionFile == null) {</span>
+            // wybór nazwy pliku, w którym zapisany zostanie zaszyfrowany tekst
+<span class="nc" id="L158">            textEncryptionFile = saveFileDialog(new FileChooser.ExtensionFilter(&quot;CFR&quot;, &quot;*.cfr&quot;));</span>
+        }
+<span class="nc" id="L160">        byte[] output = enc.crypt(Cipher.ENCRYPT_MODE, text.getBytes());</span>
+<span class="nc" id="L161">        fh.saveFile(output, textEncryptionFile);</span>
+<span class="nc" id="L162">        updateLog(&quot;Zaszyfrowany tekst zapisano w pliku: &quot; + textEncryptionFile.getAbsolutePath());</span>
+<span class="nc" id="L163">        textEncryptionFile = null;</span>
+<span class="nc" id="L164">    }</span>
+
+    @FXML
+    private void decryptTextButtonAction(ActionEvent event) throws InvalidKeyException, IOException, FileNotFoundException, IllegalBlockSizeException, BadPaddingException {
+<span class="nc bnc" id="L168" title="All 2 branches missed.">        if(textDecryptionFile == null) {</span>
+<span class="nc" id="L169">            textDecryptionFile = chooseFile(); // wybór pliku do odszyfrowania</span>
+        }
+<span class="nc" id="L171">        byte[] input = fh.readFile(textDecryptionFile);</span>
+<span class="nc" id="L172">        byte[] output = enc.crypt(Cipher.DECRYPT_MODE, input);</span>
+<span class="nc" id="L173">        decryptedTextLabel.setText(new String(output));</span>
+<span class="nc" id="L174">        updateLog(&quot;Odszyfrowano tekst z pliku: &quot; + textDecryptionFile.getAbsolutePath());</span>
+        
+<span class="nc" id="L176">        decryptedTextFile = new File(&quot;C:/test/decrypted_&quot; + textDecryptionFile.getName() + &quot;.txt&quot;);</span>
+<span class="nc" id="L177">        fh.saveFile(output, decryptedTextFile);</span>
+<span class="nc" id="L178">        updateLog(&quot;Odszyfrowany tekst zapisano w pliku: &quot; + decryptedTextFile.getAbsolutePath());</span>
+        
+<span class="nc" id="L180">        textDecryptionFile = null;</span>
+<span class="nc" id="L181">        decryptedTextFile = null;</span>
+<span class="nc" id="L182">    }</span>
+
+    /* szyfrowanie danych wprowadzonych przez użytkownika i zapisanie ich w bazie danych */
+    @FXML
+    private void encryptDataButtonAction(ActionEvent event) throws InvalidKeyException, IOException, IllegalBlockSizeException, BadPaddingException, SQLException {
+        int id;
+<span class="nc" id="L188">        byte[] input = fh.readFile(dataToEncrypt);</span>
+<span class="nc" id="L189">        byte[] output = enc.crypt(Cipher.ENCRYPT_MODE, input);</span>
+<span class="nc" id="L190">        id = db.getMaxId() + 1; // inkrementacja ID</span>
+        
+        // przygotowanie obiektu klasy Data do zapisania w bazie danych
+<span class="nc" id="L193">        Data data = new Data(id, output, new Timestamp(System.currentTimeMillis()));</span>
+<span class="nc" id="L194">        db.insertData(data); // wstawienie nowego rekordu</span>
+<span class="nc" id="L195">        lastId = id; // aktualizacja ID ostatnio dodanego rekordu</span>
+<span class="nc" id="L196">        updateLog(&quot;Zaszyfrowane dane zapisano w bazie z ID = &quot; + data.getId());</span>
+        
+<span class="nc" id="L198">        refreshTable(); // ponowne wczytanie danych z bazy danych do tabeli - odświeżenie widoku</span>
+<span class="nc" id="L199">    }</span>
+
+    /* odszyfrowanie danych zapisanych w bazie w rekordzie o wybranym ID */
+    @FXML
+    private void decryptDataButtonAction(ActionEvent event) throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException {
+<span class="nc" id="L204">        int id = Integer.parseInt(data_id.getText()); // ID rekordu do odszyfrowania</span>
+<span class="nc bnc" id="L205" title="All 2 branches missed.">        if(decryptedDataFile == null) {</span>
+            // wybór nazwy pliku, w którym zapisany zostanie odszyfrowany plik
+<span class="nc" id="L207">            decryptedDataFile = saveFileDialog(null);</span>
+        }
+<span class="nc" id="L209">        byte[] input = db.selectData(id).getEncryptedData(); // odczytanie zaszyfrowanych danych</span>
+<span class="nc" id="L210">        byte[] output = enc.crypt(Cipher.DECRYPT_MODE, input);</span>
+<span class="nc" id="L211">        fh.saveFile(output, decryptedDataFile);</span>
+<span class="nc" id="L212">        updateLog(&quot;Odszyfrowano dane dla rekordu z bazy o ID = &quot; + id);</span>
+<span class="nc" id="L213">        updateLog(&quot;Odszyfrowane dane zapisano w pliku: &quot; + decryptedDataFile.getAbsolutePath());</span>
+<span class="nc" id="L214">    }</span>
+
+    /* metoda pomocnicza - wybór pliku */
+    private File chooseFile() {
+        File file;
+<span class="nc" id="L219">        FileChooser fileChooser = new FileChooser();</span>
+<span class="nc" id="L220">        fileChooser.setTitle(&quot;Wybierz plik...&quot;);</span>
+<span class="nc" id="L221">        file = fileChooser.showOpenDialog(new Stage());</span>
+        
+<span class="nc" id="L223">        return file; // zwracany jest wybrany plik - obiekt klasy File</span>
+    }
+
+    /* przygotowanie struktury tabeli */
+    public void prepareTable() throws SQLException {
+<span class="nc" id="L228">        ResultSet rs = db.getAllData(); // pobierz wszystkie rekordy z bazy danych</span>
+<span class="nc" id="L229">        data = FXCollections.observableArrayList();</span>
+
+        // dynamiczne budowanie struktury tabeli na podstawie struktury tabeli w bazie danych
+<span class="nc bnc" id="L232" title="All 2 branches missed.">        for(int i=0 ; i&lt;rs.getMetaData().getColumnCount(); i++){</span>
+<span class="nc" id="L233">            final int j = i;                </span>
+<span class="nc" id="L234">            TableColumn col = new TableColumn(rs.getMetaData().getColumnName(i+1));</span>
+<span class="nc" id="L235">            col.setCellValueFactory(new Callback&lt;TableColumn.CellDataFeatures&lt;ObservableList,String&gt;,ObservableValue&lt;String&gt;&gt;(){                    </span>
+                public ObservableValue&lt;String&gt; call(TableColumn.CellDataFeatures&lt;ObservableList, String&gt; param) {                                                                                              
+<span class="nc" id="L237">                    return new SimpleStringProperty(param.getValue().get(j).toString());                        </span>
+                }                    
+            });
+
+<span class="nc" id="L241">            table.getColumns().addAll(col);</span>
+        }
+        
+<span class="nc" id="L244">        table.getColumns().get(1).setMaxWidth(270);</span>
+<span class="nc" id="L245">    }</span>
+    
+    /* wstawienie rekordów z bazy do tabeli w aplikacji */
+    public void fillTable() throws SQLException {
+<span class="nc" id="L249">        ResultSet rs = db.getAllData();</span>
+<span class="nc bnc" id="L250" title="All 2 branches missed.">        while(rs.next()){</span>
+            //Iterate Row
+<span class="nc" id="L252">            ObservableList&lt;String&gt; row = FXCollections.observableArrayList();</span>
+<span class="nc bnc" id="L253" title="All 2 branches missed.">            for(int i=1 ; i&lt;=rs.getMetaData().getColumnCount(); i++){</span>
+                //Iterate Column
+<span class="nc" id="L255">                row.add(rs.getString(i));</span>
+            }
+<span class="nc" id="L257">            data.add(row);</span>
+
+<span class="nc" id="L259">        }</span>
+<span class="nc" id="L260">        table.setItems(data);</span>
+<span class="nc" id="L261">    }</span>
+    
+    // zresetowanie zawartości tabeli
+    public void refreshTable() throws SQLException {
+<span class="nc bnc" id="L265" title="All 2 branches missed.">        for (int i = 0; i&lt;table.getItems().size(); i++) {</span>
+<span class="nc" id="L266">            table.getItems().clear();</span>
+        }
+        
+<span class="nc" id="L269">        fillTable();</span>
+<span class="nc" id="L270">    }</span>
+    
+    /* wybór nazwy i lokalizacji pliku do zapisania - zwraca obiekt klasy File
+        parametr: filtr rozszerzenia
+    */
+    public File saveFileDialog(FileChooser.ExtensionFilter filter) {
+        File file;
+<span class="nc" id="L277">        FileChooser fileChooser = new FileChooser();</span>
+<span class="nc" id="L278">        fileChooser.setTitle(&quot;Wybierz lokalizację pliku do zapisania...&quot;);</span>
+<span class="nc bnc" id="L279" title="All 2 branches missed.">        if(filter != null) </span>
+<span class="nc" id="L280">            fileChooser.getExtensionFilters().add(filter);</span>
+<span class="nc" id="L281">        file = fileChooser.showSaveDialog(new Stage());</span>
+<span class="nc" id="L282">        return file;</span>
+    }
+
+    // wybór pliku do zaszyfrowania
+    @FXML
+    private void chooseFileToEncryptAction(ActionEvent event) {
+<span class="nc" id="L288">        fileToEncrypt = chooseFile();</span>
+<span class="nc bnc" id="L289" title="All 2 branches missed.">        if(fileToEncrypt != null) {</span>
+<span class="nc" id="L290">            file_to_encrypt_path.setText(fileToEncrypt.getAbsolutePath());</span>
+        }
+<span class="nc" id="L292">    }</span>
+
+    // wybór pliku do odszyfrowania
+    @FXML
+    private void chooseFileToDecryptAction(ActionEvent event) {
+<span class="nc" id="L297">        fileToDecrypt = chooseFile();</span>
+<span class="nc bnc" id="L298" title="All 2 branches missed.">        if(fileToDecrypt != null) {</span>
+<span class="nc" id="L299">            file_to_decrypt_path.setText(fileToDecrypt.getAbsolutePath());</span>
+        }
+<span class="nc" id="L301">    }</span>
+    
+    // dodanie nowego wpisu do logów
+    public void updateLog(String msg) {
+<span class="nc" id="L305">        String temp = log_textarea.getText();</span>
+<span class="nc" id="L306">        String updated = temp + new Timestamp(System.currentTimeMillis()) + &quot;: &quot; + msg + &quot;\n&quot;;</span>
+<span class="nc" id="L307">        log_textarea.setText(updated);</span>
+<span class="nc" id="L308">    }</span>
+
+    /* metoda testująca działanie aplikacji */
+    @FXML
+    private void testAction(ActionEvent event) throws InvalidKeyException, IllegalBlockSizeException, BadPaddingException, IOException, SQLException {
+        /* SZYFROWANIE TEKSTU */
+<span class="nc" id="L314">        textarea.setText(&quot;Przykładowy tekst...&quot;);</span>
+<span class="nc" id="L315">        textEncryptionFile = new File(&quot;C:/test/text_enc.cfr&quot;);</span>
+<span class="nc" id="L316">        encryptTextButtonAction(event);</span>
+<span class="nc" id="L317">        textDecryptionFile = new File(&quot;C:/test/text_enc.cfr&quot;);</span>
+<span class="nc" id="L318">        decryptTextButtonAction(event);</span>
+        
+        /*SZYFROWANIE PLIKU */
+<span class="nc" id="L321">        fileToEncrypt = new File(&quot;C:/test/example.jpg&quot;);</span>
+<span class="nc" id="L322">        fileEncryptionFile = new File(&quot;C:/test/example.cfr&quot;);</span>
+<span class="nc" id="L323">        file_to_encrypt_path.setText(fileToEncrypt.getAbsolutePath());</span>
+<span class="nc" id="L324">        encryptFileButtonAction(event);</span>
+        
+<span class="nc" id="L326">        fileToDecrypt = new File(&quot;C:/test/example.cfr&quot;);</span>
+<span class="nc" id="L327">        decryptedFileFile = new File(&quot;C:/test/decrypted_example.cfr.jpg&quot;);</span>
+<span class="nc" id="L328">        file_to_decrypt_path.setText(fileToDecrypt.getAbsolutePath());</span>
+<span class="nc" id="L329">        decryptFileButtonAction(event);</span>
+        
+        /* SZYFROWANIE DANYCH */
+//        db_textarea.setText(&quot;Przykład&quot;);
+<span class="nc" id="L333">        dataToEncrypt = new File(&quot;C:/test/instrukcja.pdf&quot;);</span>
+<span class="nc" id="L334">        data_to_encrypt_path.setText(dataToEncrypt.getAbsolutePath());</span>
+<span class="nc" id="L335">        encryptDataButtonAction(event);</span>
+<span class="nc" id="L336">        data_id.setText(lastId + &quot;&quot;);</span>
+<span class="nc" id="L337">        decryptedDataFile = new File(&quot;C:/test/decrypted_instrukcja.pdf&quot;);</span>
+<span class="nc" id="L338">        decryptDataButtonAction(event);</span>
+<span class="nc" id="L339">    }</span>
+
+    @FXML
+    private void chooseDataToEncryptAction(ActionEvent event) {
+<span class="nc" id="L343">        dataToEncrypt = chooseFile();</span>
+<span class="nc bnc" id="L344" title="All 2 branches missed.">        if(dataToEncrypt != null) {</span>
+<span class="nc" id="L345">            data_to_encrypt_path.setText(dataToEncrypt.getAbsolutePath());</span>
+        }
+<span class="nc" id="L347">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.6.201602180812</span></div></body></html>
